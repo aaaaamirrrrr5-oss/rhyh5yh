@@ -1,0 +1,25 @@
+{
+  "name": "بازرس سایت — Site Inspector",
+  "short_name": "بازرس سایت",
+  "description": "ممیزی و بازسازی خودکار سئوی سایت وردپرس، روی هر گوشی",
+  "lang": "fa",
+  "dir": "rtl",
+  "id": "./",
+  "start_url": "./?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#060913",
+  "theme_color": "#060913",
+  "categories": ["productivity", "business", "utilities"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "بازسازی سئو", "short_name": "بازسازی", "url": "./?go=seo", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "تنظیمات و اتصال", "short_name": "تنظیمات", "url": "./?go=settings", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
