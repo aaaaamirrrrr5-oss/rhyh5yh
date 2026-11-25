@@ -1,0 +1,81 @@
+name: ساخت APK بازرس سایت
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+permissions:
+  contents: read
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with: { persist-credentials: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install JavaScript dependencies
+        run: npm install --include=dev --no-audit --no-fund
+      - name: Run JavaScript, policy and scaffold tests
+        run: npm run check:js
+      - name: Generate Capacitor Android project
+        run: ./node_modules/.bin/cap add android
+      - name: Prepare native LiteRT-LM engine
+        run: python3 scripts/prepare-android.py
+      - name: Cache generated Gradle files
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+      - name: Generate Android assets
+        run: ./node_modules/.bin/capacitor-assets generate --android
+      - name: Sync Capacitor Android
+        run: ./node_modules/.bin/cap sync android
+      - name: Build debug APK with diagnostics
+        working-directory: android
+        shell: bash
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --version 2>&1 | tee ../gradle-version.log
+          ./gradlew --no-daemon --stacktrace --console=plain --warning-mode summary assembleDebug 2>&1 | tee ../gradle-build.log
+      - name: Show the real Gradle error
+        if: failure()
+        shell: bash
+        run: |
+          echo "=== Last 120 lines before BUILD FAILED ==="
+          tail -n 160 gradle-build.log | head -n 140 || true
+          echo "=== Lines that explain the failure ==="
+          grep -n -B2 -A25 -E "What went wrong|^e: |error: |Execution failed for task|Could not resolve|Inconsistent JVM|requires libraries|OutOfMemory|Java heap" gradle-build.log | head -250 || true
+          {
+            echo '### Gradle failure (key lines)'
+            echo '```'
+            grep -n -A20 -E "What went wrong" gradle-build.log | head -80 || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-inspector-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload Gradle diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-inspector-gradle-diagnostics
+          path: |
+            gradle-version.log
+            gradle-build.log
+            android/app/build/reports/**
+          if-no-files-found: warn
+          retention-days: 7
